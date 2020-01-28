@@ -10,13 +10,14 @@ program: PROGRAM PNAME SMCOLN;
 
 // Variable declarations (not finished)
 
-variable: VAR VNAME;
-varDeclaration: vNameList COLON;
+variable: VAR NEWLINE TAB varDeclaration+;
+varDeclaration: vNameList COLON VTYPE;
 vNameList: VNAME (COMMA VNAME)*;
 
-// Main program block
+// TODO: Main program block
 
-
+// Basic arithmetic expressions with variables
+arithExpr: VNAME EXPR VNAME;
 
 
 ////////// Lexer rules (breaking up the input). Must be uppercase names! //////////
@@ -31,10 +32,13 @@ PNAME: [a-zA-Z][a-zA-Z0-9_]*;
 
 VAR: 'VAR';
 VNAME: [a-zA-Z][a-zA-Z0-9_]*;
-// TODO: VTYPE
+VTYPE: 'boolean' | 'real';
 
 // Main program block
 
+
+// Basic arithmetic expressions with variables
+EXPR: '+' | '*' | '-' | '/';
 
 
 // Comments
@@ -50,5 +54,6 @@ SMCOLN: ';';
 COMMA: ',';
 COLON: ':';
 NEWLINE: [\n\r];
+TAB: [\t];
 
 // Misc. utility
