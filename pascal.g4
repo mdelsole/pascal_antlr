@@ -8,34 +8,79 @@ grammar pascal;
 }
 
 @members {
-    Map<String, String> vars = new HashMap<>();
+    Map<String, Double> arithVars = new HashMap<String, Double>();
+    Map<String, Boolean> boolVars = new HashMap<String, Boolean>();
+
     Scanner scanner = new Scanner(System.in);
+
+    // Separate the variable name list into usable names
+    public String [] parseString(String variable_list){
+        String[] values = variable_list.split("\\s*,\\s*");
+
+        return values;
+    }
 }
 
 
 /*************** Parser rules (putting input into tree) ***************/
 
 
-/***** Program name *****/
+/***** Program *****/
 
-program: PROGRAM NAME SMCOLN;
-// TODO: Store?
+program: PROGRAM NAME SMCOLN (variable)? program_block;
 
 /***** Variable declarations *****/
 
 variable: VAR varDeclaration+;
-varDeclaration: vNameList COLON VTYPE SMCOLN;
+varDeclaration: vNameList COLON VTYPE '=' (REAL | BOOL) SMCOLN
+    { if ($VTYPE.text.equals("boolean")){
+        String [] vnames = parseString($vNameList.text);
+        for (int i = 0; i < vnames.length; i++){
+            boolVars.put(vnames[i], Boolean.parseBoolean($BOOL.text));
+        }
+      }
+      else if ($VTYPE.text.equals("real")){
+        String [] vnames = parseString($vNameList.text);
+        for (int i = 0; i < vnames.length; i++){
+            arithVars.put(vnames[i], Double.valueOf($REAL.text));
+        }
+      }
+      else {
+        System.out.println("Error! Unrecognized type");
+      }
+    }
+    | vNameList COLON VTYPE '=' (arith_expr | bool_expr) SMCOLN
+          { if ($VTYPE.text.equals("boolean")){
+              String [] vnames = parseString($vNameList.text);
+              for (int i = 0; i < vnames.length; i++){
+                  boolVars.put(vnames[i], Boolean.parseBoolean($bool_expr.text));
+              }
+            }
+            else if ($VTYPE.text.equals("real")){
+              String [] vnames = parseString($vNameList.text);
+              for (int i = 0; i < vnames.length; i++){
+                  arithVars.put(vnames[i], Double.valueOf($arith_expr.text));
+              }
+            }
+            else {
+              System.out.println("Error! Unrecognized type");
+            }
+          }
+    ;
+
 vNameList: NAME (COMMA NAME)*;
 
 /***** Main program block *****/
 
-program_block: BEGIN (variable)? statement_list END;
+program_block: BEGIN statement_list END SMCOLN;
 statement_list: statement | statement SMCOLN statement_list;
-statement: program_block | if_block | empty; //general_expr
+statement: program_block | if_block | empty; // TODO: readln, writeln
+
+empty: ;
 
 /***** Basic arithmetic expressions with variables *****/
 
-// For 'real' (float) variables
+// For 'real' (double) variables
 arith_expr returns[double d]:
        '(' e=arith_expr ')' { $d = $e.d; }
        | el=arith_expr '*' er=arith_expr { $d = $el.d * $er.d; }
@@ -43,7 +88,11 @@ arith_expr returns[double d]:
        | el=arith_expr '+' er=arith_expr { $d = $el.d + $er.d; }
        | el=arith_expr '-' er=arith_expr { $d = $el.d - $er.d; }
        // Base
-       | DOUBLE { $d = Double.valueOf($DOUBLE.text); }
+       | REAL { $d = Double.valueOf($REAL.text); }
+       // Variable names
+       | NAME { $d = arithVars.get($NAME.text); }
+       // Special expressions
+       | spcl_math_expr {$d = $spcl_math_expr.d; }
        ;
 
 /***** Boolean/logical Expressions *****/
@@ -54,12 +103,9 @@ bool_expr returns [boolean b]:
     | NOT el=bool_expr { $b = (!($el.b != false ? true : false) ? true : false); }
     // Base
     | BOOL { $b = Boolean.parseBoolean($BOOL.text); }
+    // Variable names
+    | NAME { $b = boolVars.get($NAME.text); }
     ;
-
-/***** Expressions as a whole (combined bool+float) *****/
-
-//general_expr returns [String s] ;
-
 
 /***** Decision Making (if-then-else, case) *****/
 
@@ -75,8 +121,8 @@ condition returns [boolean b]:
 
 /***** Special Expressions: Readln, Writeln, sqrt, sin, cos, ln, exp *****/
 
-// TODO: Readln, Writeln
-//spcl_read_expr: NAME;
+// TODO: Readln (unfinished), Writeln
+readln: READLN '(\'' TEXT '\')' { System.out.println($TEXT.text); };
 
 // For sqrt, sin, cos, ln, and exp
 spcl_math_expr returns [double d]:
@@ -87,24 +133,24 @@ spcl_math_expr returns [double d]:
     | expr=EXP '(' contents=arith_expr ')' { $d = Math.exp($contents.d); }
     ;
 
-/***** Misc. utility *****/
-
-empty: ;
-
 
 /*************** Lexer rules (breaking up the input). Must be uppercase names! ***************/
 
-/*
-Antlr is dumb. Why can't the parser listen for a lexer token? That kind of defeats the purpose of the whole language.
 
+/*
 Ordering rule is: Most specific to least specific. DO NOT BREAK THIS RULE! Very bad things will happen if you do.
 */
 
 PROGRAM: 'program';
 VAR: 'VAR';
 VTYPE: 'boolean' | 'real';
+VASSIGN: ':=';
 BEGIN: 'BEGIN';
 END: 'END';
+
+
+READLN: 'readln';
+WRITELN: 'writeln';
 
 
 COMMENT1: '(*' .*? '*)' -> skip;
@@ -131,7 +177,7 @@ IF : 'if';
 ELSE : 'else';
 THEN : 'then';
 
-DOUBLE: [-]?[0-9]+('.'[0-9]+)?;
+REAL: [-]?[0-9]+('.'[0-9]+)?;
 INT: [0-9]+;
 
 NAME: [a-zA-Z][a-zA-Z0-9_]*;
@@ -141,3 +187,5 @@ SPACE : [ \n\r\t] -> skip;
 SMCOLN: ';';
 COMMA: ',';
 COLON: ':';
+
+TEXT: .;
