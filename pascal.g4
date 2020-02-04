@@ -74,7 +74,8 @@ vNameList: NAME (COMMA NAME)*;
 
 program_block: BEGIN statement_list END SMCOLN;
 statement_list: statement | statement SMCOLN statement_list;
-statement: program_block | if_block | empty; // TODO: readln, writeln
+statement: program_block | if_block | empty | case_statement | writeln | readln;
+statements: statement (SMCOLN statement)*;// TODO: readln, writeln
 
 empty: ;
 
@@ -119,10 +120,13 @@ condition returns [boolean b]:
 
 // TODO: Case
 
+case_statement: CASE condition OF statement_list ( SMCOLN )* (SMCOLN ELSE statements)? END;
+
 /***** Special Expressions: Readln, Writeln, sqrt, sin, cos, ln, exp *****/
 
-// TODO: Readln (unfinished), Writeln
-readln: READLN '(\'' TEXT '\')' { System.out.println($TEXT.text); };
+// Readln, Writeln
+readln [String s]: READLN '(\''variable'\')' { $variable.s = scanner.nextLine(); };
+writeln: WRITELN '(\''TEXT'\')' { System.out.println($TEXT.text); };
 
 // For sqrt, sin, cos, ln, and exp
 spcl_math_expr returns [double d]:
@@ -176,6 +180,8 @@ LN : 'ln';
 IF : 'if';
 ELSE : 'else';
 THEN : 'then';
+CASE : 'case';
+OF : 'of';
 
 REAL: [-]?[0-9]+('.'[0-9]+)?;
 INT: [0-9]+;
