@@ -5,18 +5,16 @@ grammar pascal;
     import java.lang.Math;
     import java.util.HashMap;
     import java.util.Scanner;
+    import java.util.Map;
 }
 
 @members {
     Map<String, Double> arithVars = new HashMap<String, Double>();
     Map<String, Boolean> boolVars = new HashMap<String, Boolean>();
-
     Scanner scanner = new Scanner(System.in);
-
     // Separate the variable name list into usable names
     public String [] parseString(String variable_list){
         String[] values = variable_list.split("\\s*,\\s*");
-
         return values;
     }
 }
@@ -27,45 +25,44 @@ grammar pascal;
 
 /***** Program *****/
 
-program: PROGRAM NAME SMCOLN (variable)? program_block;
+program: PROGRAM NAME SMCOLN (variable)? program_block EOF;
 
 /***** Variable declarations *****/
 
 variable: VAR varDeclaration+;
-varDeclaration: vNameList COLON VTYPE '=' (REAL | BOOL) SMCOLN
+varDeclaration: vNameList COLON VTYPE '=' BOOL SMCOLN
     { if ($VTYPE.text.equals("boolean")){
         String [] vnames = parseString($vNameList.text);
         for (int i = 0; i < vnames.length; i++){
             boolVars.put(vnames[i], Boolean.parseBoolean($BOOL.text));
         }
       }
-      else if ($VTYPE.text.equals("real")){
-        String [] vnames = parseString($vNameList.text);
-        for (int i = 0; i < vnames.length; i++){
-            arithVars.put(vnames[i], Double.valueOf($REAL.text));
-        }
-      }
-      else {
-        System.out.println("Error! Unrecognized type");
-      }
     }
-    | vNameList COLON VTYPE '=' (arith_expr | bool_expr) SMCOLN
-          { if ($VTYPE.text.equals("boolean")){
-              String [] vnames = parseString($vNameList.text);
-              for (int i = 0; i < vnames.length; i++){
-                  boolVars.put(vnames[i], Boolean.parseBoolean($bool_expr.text));
-              }
-            }
-            else if ($VTYPE.text.equals("real")){
-              String [] vnames = parseString($vNameList.text);
-              for (int i = 0; i < vnames.length; i++){
-                  arithVars.put(vnames[i], Double.valueOf($arith_expr.text));
-              }
-            }
-            else {
-              System.out.println("Error! Unrecognized type");
+    | vNameList COLON VTYPE '=' REAL SMCOLN{
+        if ($VTYPE.text.equals("real")){
+            String [] vnames = parseString($vNameList.text);
+            for (int i = 0; i < vnames.length; i++){
+                arithVars.put(vnames[i], Double.parseDouble($REAL.text));
             }
           }
+        }
+    | vNameList COLON VTYPE '=' arith_expr SMCOLN
+          {
+          if ($VTYPE.text.equals("real")){
+                 String [] vnames = parseString($vNameList.text);
+                 for (int i = 0; i < vnames.length; i++){
+                     arithVars.put(vnames[i], Double.valueOf($arith_expr.d));
+                  }
+              }
+          }
+    | vNameList COLON VTYPE '=' bool_expr SMCOLN
+        { if ($VTYPE.text.equals("boolean")){
+            String [] vnames = parseString($vNameList.text);
+            for (int i = 0; i < vnames.length; i++){
+                boolVars.put(vnames[i], Boolean.valueOf($bool_expr.b));
+            }
+          }
+        }
     ;
 
 vNameList: NAME (COMMA NAME)*;
@@ -74,9 +71,9 @@ vNameList: NAME (COMMA NAME)*;
 
 program_block: BEGIN statement_list END SMCOLN;
 statement_list: statement | statement SMCOLN statement_list;
-statement: program_block | if_block | empty; // TODO: readln, writeln
+statement: program_block* | if_block* | case_statement* | writeln*;// | readln[String s];
+statements: statement (SMCOLN statement)*;// TODO: readln, writeln
 
-empty: ;
 
 /***** Basic arithmetic expressions with variables *****/
 
@@ -98,8 +95,8 @@ arith_expr returns[double d]:
 /***** Boolean/logical Expressions *****/
 
 bool_expr returns [boolean b]:
-    el=bool_expr AND er=bool_expr { $b = (($el.b != false ? true : false) && ($er.b != false ? true : false)) ? true : false; }
-    | el=bool_expr OR er=bool_expr { $b = (($el.b != false ? true : false) || ($er.b != false ? true : false)) ? true : false; }
+    el=bool_expr AND er=bool_expr { $b = ((($el.b != false ? true : false) && ($er.b != false ? true : false)) ? true : false); }
+    | el=bool_expr OR er=bool_expr { $b = ((($el.b != false ? true : false) || ($er.b != false ? true : false)) ? true : false); }
     | NOT el=bool_expr { $b = (!($el.b != false ? true : false) ? true : false); }
     // Base
     | BOOL { $b = Boolean.parseBoolean($BOOL.text); }
@@ -112,17 +109,30 @@ bool_expr returns [boolean b]:
 if_block: IF condition THEN statement (ELSE IF bool_expr THEN statement)* (ELSE statement)?;
 
 condition returns [boolean b]:
-    el=bool_expr '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false; }
-    | el=bool_expr NOT '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false; }
+    el=bool_expr '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false); }
+    | el=bool_expr NOT '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false); }
     | BOOL { $b = Boolean.parseBoolean($BOOL.text); }
     ;
 
 // TODO: Case
 
+case_statement: CASE condition OF statement_list ( SMCOLN )* (SMCOLN ELSE statements)? END;
+
 /***** Special Expressions: Readln, Writeln, sqrt, sin, cos, ln, exp *****/
 
-// TODO: Readln (unfinished), Writeln
-readln: READLN '(\'' TEXT '\')' { System.out.println($TEXT.text); };
+// Readln, Writeln
+//readln [String s]: READLN '(\''variable'\')' { $variable.s = scanner.nextLine(); };
+writeln: WRITELN '('NAME')' SMCOLN {
+    if (arithVars.containsKey($NAME.text)){
+        System.out.println(arithVars.get($NAME.text));
+    }
+    else if (boolVars.containsKey($NAME.text)){
+        System.out.println(boolVars.get($NAME.text));
+    }
+    else{
+        System.out.println($NAME.text);
+    }
+};
 
 // For sqrt, sin, cos, ln, and exp
 spcl_math_expr returns [double d]:
@@ -176,6 +186,8 @@ LN : 'ln';
 IF : 'if';
 ELSE : 'else';
 THEN : 'then';
+CASE : 'case';
+OF : 'of';
 
 REAL: [-]?[0-9]+('.'[0-9]+)?;
 INT: [0-9]+;

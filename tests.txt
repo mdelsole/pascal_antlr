@@ -1,0 +1,16 @@
+program ifstatementstest;
+VAR
+    i : boolean = true;
+    j : boolean = false;
+    z : boolean = true and false
+    k : real = 2.5;
+    m : real = 3*4;
+
+BEGIN
+    writeln(Yo);
+    writeln(i);
+    writeln(k);
+    writeln(m);
+    writeln(z);
+END;
+
