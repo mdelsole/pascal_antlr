@@ -5,6 +5,7 @@ grammar pascal;
     import java.lang.Math;
     import java.util.HashMap;
     import java.util.Scanner;
+    import java.util.Map;
 }
 
 @members {
@@ -74,7 +75,7 @@ vNameList: NAME (COMMA NAME)*;
 
 program_block: BEGIN statement_list END SMCOLN;
 statement_list: statement | statement SMCOLN statement_list;
-statement: program_block | if_block | empty | case_statement | writeln | readln;
+statement: program_block | if_block | empty | case_statement | writeln;// | readln[String s];
 statements: statement (SMCOLN statement)*;// TODO: readln, writeln
 
 empty: ;
@@ -99,8 +100,8 @@ arith_expr returns[double d]:
 /***** Boolean/logical Expressions *****/
 
 bool_expr returns [boolean b]:
-    el=bool_expr AND er=bool_expr { $b = (($el.b != false ? true : false) && ($er.b != false ? true : false)) ? true : false; }
-    | el=bool_expr OR er=bool_expr { $b = (($el.b != false ? true : false) || ($er.b != false ? true : false)) ? true : false; }
+    el=bool_expr AND er=bool_expr { $b = ((($el.b != false ? true : false) && ($er.b != false ? true : false)) ? true : false); }
+    | el=bool_expr OR er=bool_expr { $b = ((($el.b != false ? true : false) || ($er.b != false ? true : false)) ? true : false); }
     | NOT el=bool_expr { $b = (!($el.b != false ? true : false) ? true : false); }
     // Base
     | BOOL { $b = Boolean.parseBoolean($BOOL.text); }
@@ -113,8 +114,8 @@ bool_expr returns [boolean b]:
 if_block: IF condition THEN statement (ELSE IF bool_expr THEN statement)* (ELSE statement)?;
 
 condition returns [boolean b]:
-    el=bool_expr '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false; }
-    | el=bool_expr NOT '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false; }
+    el=bool_expr '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false); }
+    | el=bool_expr NOT '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false); }
     | BOOL { $b = Boolean.parseBoolean($BOOL.text); }
     ;
 
@@ -125,7 +126,7 @@ case_statement: CASE condition OF statement_list ( SMCOLN )* (SMCOLN ELSE statem
 /***** Special Expressions: Readln, Writeln, sqrt, sin, cos, ln, exp *****/
 
 // Readln, Writeln
-readln [String s]: READLN '(\''variable'\')' { $variable.s = scanner.nextLine(); };
+//readln [String s]: READLN '(\''variable'\')' { $variable.s = scanner.nextLine(); };
 writeln: WRITELN '(\''TEXT'\')' { System.out.println($TEXT.text); };
 
 // For sqrt, sin, cos, ln, and exp
