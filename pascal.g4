@@ -52,7 +52,7 @@ varDeclaration: vNameList COLON VTYPE '=' BOOL SMCOLN
                  String [] vnames = parseString($vNameList.text);
                  for (int i = 0; i < vnames.length; i++){
                      arithVars.put(vnames[i], Double.valueOf($arith_expr.d));
-                  }
+                 }
               }
           }
     | vNameList COLON VTYPE '=' bool_expr SMCOLN
