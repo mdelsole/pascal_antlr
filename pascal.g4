@@ -71,7 +71,7 @@ vNameList: NAME (COMMA NAME)*;
 
 program_block: BEGIN statement_list END SMCOLN;
 statement_list: statement | statement SMCOLN statement_list;
-statement: program_block* | if_block* | case_statement* | writeln*;// | readln[String s];
+statement: (program_block | if_block | case_statement | writeln | readln)+;
 statements: statement (SMCOLN statement)*;// TODO: readln, writeln
 
 
@@ -111,27 +111,60 @@ if_block: IF condition THEN statement (ELSE IF bool_expr THEN statement)* (ELSE 
 condition returns [boolean b]:
     el=bool_expr '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false); }
     | el=bool_expr NOT '=' er=bool_expr { $b = (($el.b == $er.b) ? true : false); }
-    | BOOL { $b = Boolean.parseBoolean($BOOL.text); }
+    | BOOL { $b = Boolean.parseBoolean($BOOL.text);}
+    | NAME { $b = Boolean.parseBoolean($NAME.text); }
     ;
 
 // TODO: Case
 
-case_statement: CASE condition OF statement_list ( SMCOLN )* (SMCOLN ELSE statements)? END;
+case_statement: CASE condition OF statement_list  SMCOLN  (SMCOLN ELSE statements)? END;
 
 /***** Special Expressions: Readln, Writeln, sqrt, sin, cos, ln, exp *****/
 
 // Readln, Writeln
-//readln [String s]: READLN '(\''variable'\')' { $variable.s = scanner.nextLine(); };
-writeln: WRITELN '('NAME')' SMCOLN {
-    if (arithVars.containsKey($NAME.text)){
-        System.out.println(arithVars.get($NAME.text));
+readln: READLN '('NAME')' SMCOLN{
+    if( scanner.hasNextDouble()){
+        double dou = scanner.nextDouble();
+        arithVars.put($NAME.text, dou);
     }
-    else if (boolVars.containsKey($NAME.text)){
-        System.out.println(boolVars.get($NAME.text));
+    else if (scanner.hasNextBoolean()){
+        boolean bo = scanner.nextBoolean();
+        boolVars.put($NAME.text, bo);
     }
     else{
-        System.out.println($NAME.text);
+        System.out.println("NOT VALID");
     }
+};
+
+writeln: WRITELN '('spcl_math_expr')' SMCOLN {
+    if (arithVars.containsKey($spcl_math_expr.text.substring($spcl_math_expr.text.length()-2,$spcl_math_expr.text.length()-1))){
+        //System.out.println($spcl_math_expr.text.substring(0,4));
+        if ( $spcl_math_expr.text.substring(0,4).equals("sqrt") )
+            System.out.println($spcl_math_expr.d);
+        else if( $spcl_math_expr.text.substring(0,3).equals("sin") )
+            System.out.println($spcl_math_expr.d);
+        else if( $spcl_math_expr.text.substring(0,3).equals("cos") )
+            System.out.println($spcl_math_expr.d);
+        else if( $spcl_math_expr.text.substring(0,2).equals("ln") )
+            System.out.println($spcl_math_expr.d);
+        else if( $spcl_math_expr.text.substring(0,3).equals("exp"))
+            System.out.println($spcl_math_expr.d);
+    }
+} | WRITELN '('NAME')' SMCOLN {
+      if (arithVars.containsKey($NAME.text)){
+          System.out.println(arithVars.get($NAME.text));
+      }
+      else if (boolVars.containsKey($NAME.text)){
+          System.out.println(boolVars.get($NAME.text));
+      }
+      else{
+          System.out.println($NAME.text);
+          System.out.println("DODDO");
+      }
+} | WRITELN '('REAL')' SMCOLN {
+       System.out.println($REAL.text);
+} | WRITELN '('BOOL')' SMCOLN {
+       System.out.println($BOOL.text);
 };
 
 // For sqrt, sin, cos, ln, and exp
