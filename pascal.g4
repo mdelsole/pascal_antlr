@@ -232,5 +232,5 @@ SPACE : [ \n\r\t] -> skip;
 SMCOLN: ';';
 COMMA: ',';
 COLON: ':';
-
+ 
 TEXT: .;
